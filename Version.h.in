@@ -1,0 +1,5 @@
+#pragma once
+
+#define RES_PACKER_GUI_VERSION_MAJOR @res_packer_gui_VERSION_MAJOR@
+#define RES_PACKER_GUI_VERSION_MINOR @res_packer_gui_VERSION_MINOR@
+#define RES_PACKER_GUI_VERSION_PATCH @res_packer_gui_VERSION_PATCH@
