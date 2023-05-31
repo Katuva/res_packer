@@ -22,8 +22,8 @@ add_executable(
     PakTypes.h
     Packer.h
     Packer.cpp
-    Pack.h
-    Pack.cpp
+#    Pack.h
+#    Pack.cpp
     Unpacker.h
     Unpacker.cpp
     External/miniz/miniz.c
