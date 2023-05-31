@@ -4,11 +4,9 @@
 #include <iomanip>
 #include "Paths.h"
 
-class Utils
-{
+class Utils {
 public:
-    static std::string SaveFile(const char *filter, std::string (*callback)(std::string))
-    {
+    static std::string SaveFile(const char *filter, std::string (*callback)(std::string)) {
         OPENFILENAME ofn;
         wchar_t fileName[MAX_PATH] = L"";
 
@@ -28,8 +26,7 @@ public:
         return "";
     }
 
-    static void OpenFile(const char *filter, void (*callback)(std::string))
-    {
+    static void OpenFile(const char *filter, void (*callback)(std::string)) {
         OPENFILENAME ofn;
         wchar_t fileName[MAX_PATH] = L"";
 
@@ -48,8 +45,7 @@ public:
     }
 
 
-    static std::string FormatBytes(uintmax_t bytes)
-    {
+    static std::string FormatBytes(uintmax_t bytes) {
         const int scale = 1024;
         static const char *units[] = {"B", "KB", "MB", "GB", "TB"};
         int unitIndex = 0;

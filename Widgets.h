@@ -1,19 +1,18 @@
 #pragma once
+
 #include "imgui_internal.h"
 
-class Widgets
-{
+class Widgets {
 public:
-    static void IndeterminateProgressBar(const ImVec2& size_arg)
-    {
+    static void IndeterminateProgressBar(const ImVec2 &size_arg) {
         using namespace ImGui;
 
-        ImGuiContext& g = *GImGui;
-        ImGuiWindow* window = GetCurrentWindow();
+        ImGuiContext &g = *GImGui;
+        ImGuiWindow *window = GetCurrentWindow();
         if (window->SkipItems)
             return;
 
-        ImGuiStyle& style = g.Style;
+        ImGuiStyle &style = g.Style;
         ImVec2 size = CalcItemSize(size_arg, CalcItemWidth(), g.FontSize + style.FramePadding.y * 2.0f);
         ImVec2 pos = window->DC.CursorPos;
         ImRect bb(pos.x, pos.y, pos.x + size.x, pos.y + size.y);
@@ -22,7 +21,7 @@ public:
             return;
 
         const float speed = g.FontSize * 0.05f;
-        const float phase = ImFmod((float)g.Time * speed, 1.0f);
+        const float phase = ImFmod((float) g.Time * speed, 1.0f);
         const float width_normalized = 0.2f;
         float t0 = phase * (1.0f + width_normalized) - width_normalized;
         float t1 = t0 + width_normalized;

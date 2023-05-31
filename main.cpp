@@ -10,10 +10,8 @@
 #include <chrono>
 #include "Paths.h"
 #include "Packer.h"
-#include "Pack.h"
 #include "Unpacker.h"
 #include "PakTypes.h"
-//#include "FileBrowser/ImGuiFileBrowser.h"
 #include "Utils.h"
 #include "Widgets.h"
 #include <shlobj.h>
@@ -28,21 +26,30 @@ using namespace std;
 #define PROJECT_FILE_VERSION 1
 
 // Data
-static ID3D11Device*            g_pd3dDevice = NULL;
-static ID3D11DeviceContext*     g_pd3dDeviceContext = NULL;
-static IDXGISwapChain*          g_pSwapChain = NULL;
-static ID3D11RenderTargetView*  g_mainRenderTargetView = NULL;
+static ID3D11Device *g_pd3dDevice = nullptr;
+static ID3D11DeviceContext *g_pd3dDeviceContext = nullptr;
+static IDXGISwapChain *g_pSwapChain = nullptr;
+static ID3D11RenderTargetView *g_mainRenderTargetView = nullptr;
 
 // Forward declarations of helper functions
 bool CreateDeviceD3D(HWND hWnd);
+
 void CleanupDeviceD3D();
+
 void CreateRenderTarget();
+
 void CleanupRenderTarget();
-void CreatePakFile(const std::string& targetPath);
+
+void CreatePakFile(const std::string &targetPath);
+
 void SaveSettings();
+
 void LoadSettings();
+
 void ApplySettings();
+
 string SelectFolder();
+
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 vector<char> mainFont;
@@ -74,16 +81,13 @@ char password[256] = "";
 std::chrono::high_resolution_clock::time_point packStart;
 std::chrono::high_resolution_clock::time_point packEnd;
 
-//imgui_addons::ImGuiFileBrowser fileDialog;
-
 struct ProjectFile {
     unsigned int version;
     PakTypes::CompressionType compressionType;
     vector<PakTypes::PakFileItem> files;
 };
 
-string SavePakFile(string filename)
-{
+string SavePakFile(string filename) {
     if (Paths::GetFileExtension(filename).empty())
         filename.append(".pak");
     else if (Paths::GetFileExtension(filename) != ".pak")
@@ -91,8 +95,7 @@ string SavePakFile(string filename)
     return filename;
 }
 
-string SaveProjectFile(string filename)
-{
+string SaveProjectFile(string filename) {
     if (Paths::GetFileExtension(filename).empty())
         filename.append(".pakproj");
     else if (Paths::GetFileExtension(filename) != ".pakproj")
@@ -100,8 +103,7 @@ string SaveProjectFile(string filename)
     return filename;
 }
 
-string SaveHeaderFile(string filename)
-{
+string SaveHeaderFile(string filename) {
     if (Paths::GetFileExtension(filename).empty())
         filename.append(".h");
     else if (Paths::GetFileExtension(filename) != ".h")
@@ -109,8 +111,7 @@ string SaveHeaderFile(string filename)
     return filename;
 }
 
-void OpenProjectFile(const string& filename)
-{
+void OpenProjectFile(const string &filename) {
     ProjectFile projectFile;
     std::ifstream is(filename, std::ios::binary);
     cereal::BinaryInputArchive archive(is);
@@ -124,7 +125,7 @@ void OpenProjectFile(const string& filename)
     showFileWindow = true;
 }
 
-std::string TruncatePath(const std::string& path, size_t maxLength, bool packed = false) {
+std::string TruncatePath(const std::string &path, size_t maxLength, bool packed = false) {
     std::filesystem::path fsPath(path);
 
     std::string dir = fsPath.parent_path().string();
@@ -141,14 +142,12 @@ std::string TruncatePath(const std::string& path, size_t maxLength, bool packed 
 }
 
 template<class Archive>
-void serialize(Archive & archive, PakTypes::PakFileItem& item)
-{
+void serialize(Archive &archive, PakTypes::PakFileItem &item) {
     archive(item.name, item.path, item.packedPath, item.size, item.compressed, item.encrypted);
 }
 
 template<class Archive>
-void serialize(Archive & archive, ProjectFile& project)
-{
+void serialize(Archive &archive, ProjectFile &project) {
     archive(project.version, project.compressionType, project.files);
 }
 
@@ -161,9 +160,9 @@ struct Settings {
     size_t encryptionMemLimit = packer.getEncryptionMemLimit();
 
     template<class Archive>
-    void serialize(Archive & archive)
-    {
-        archive(zlibCompressionLevel, lz4CompressionLevel, zstdCompressionLevel, encryptionOpsLimit, encryptionMemLimit);
+    void serialize(Archive &archive) {
+        archive(zlibCompressionLevel, lz4CompressionLevel, zstdCompressionLevel, encryptionOpsLimit,
+                encryptionMemLimit);
     }
 };
 
@@ -171,8 +170,8 @@ Settings settings;
 
 // Main code
 #pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
-int main(int, char**)
-{
+
+int main(int, char **) {
     const int window_width = 1280;
     const int window_height = 800;
 
@@ -181,13 +180,14 @@ int main(int, char**)
 
     // Create application window
 //    ImGui_ImplWin32_EnableDpiAwareness();
-    WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"Resource Packer", nullptr };
+    WNDCLASSEXW wc = {sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr,
+                      nullptr, L"Resource Packer", nullptr};
     ::RegisterClassExW(&wc);
-    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Resource Packer...", WS_OVERLAPPEDWINDOW, windowX, windowY, window_width, window_height, nullptr, nullptr, wc.hInstance, nullptr);
+    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Resource Packer...", WS_OVERLAPPEDWINDOW, windowX, windowY,
+                                window_width, window_height, nullptr, nullptr, wc.hInstance, nullptr);
 
     // Initialize Direct3D
-    if (!CreateDeviceD3D(hwnd))
-    {
+    if (!CreateDeviceD3D(hwnd)) {
         CleanupDeviceD3D();
         ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
         return 1;
@@ -200,9 +200,10 @@ int main(int, char**)
     ::UpdateWindow(hwnd);
 
     // Setup Dear ImGui context
-    IMGUI_CHECKVERSION();
+//    IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO &io = ImGui::GetIO();
+    (void) io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
@@ -244,7 +245,7 @@ int main(int, char**)
     io.Fonts->AddFontFromMemoryTTF(mainFont.data(), mainFont.size(), baseFontSize);
 
     float iconFontSize = baseFontSize * 2.0f / 3.0f;
-    static const ImWchar icons_ranges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
+    static const ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_16_FA, 0};
     ImFontConfig icons_config;
     icons_config.MergeMode = true;
     icons_config.PixelSnapH = true;
@@ -255,7 +256,7 @@ int main(int, char**)
 
 //    io.Fonts->AddFontFromFileTTF("Roboto-Regular.ttf", 16.0f);
 //    ImFont* font2 = io.Fonts->AddFontFromFileTTF("Roboto-Medium.ttf", 28.0f);
-    ImFont* font2 = io.Fonts->AddFontFromMemoryTTF(mainFont.data(), mainFont.size(), 28.0f);
+    ImFont *font2 = io.Fonts->AddFontFromMemoryTTF(mainFont.data(), mainFont.size(), 28.0f);
     string SaveFileName = "";
 
     LoadSettings();
@@ -267,13 +268,11 @@ int main(int, char**)
 
     // Main loop
     bool done = false;
-    while (!done)
-    {
+    while (!done) {
         // Poll and handle messages (inputs, window resize, etc.)
         // See the WndProc() function below for our to dispatch events to the Win32 backend.
         MSG msg;
-        while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
-        {
+        while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE)) {
             ::TranslateMessage(&msg);
             ::DispatchMessage(&msg);
             if (msg.message == WM_QUIT)
@@ -312,20 +311,19 @@ int main(int, char**)
 
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::SetNextWindowSize(ImVec2(windowSize.x, 65));
-        ImGui::Begin("Toolbar", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoTitleBar);
+        ImGui::Begin("Toolbar", nullptr,
+                     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoResize |
+                     ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings |
+                     ImGuiWindowFlags_NoTitleBar);
 
-        if (ImGui::BeginMenuBar())
-        {
-            if (ImGui::BeginMenu("File"))
-            {
-                if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN " Open Project"))
-                {
+        if (ImGui::BeginMenuBar()) {
+            if (ImGui::BeginMenu("File")) {
+                if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN " Open Project")) {
                     Utils::OpenFile("Pak Project (*.pakproj)\0*.pakproj\0",
                                     reinterpret_cast<void (*)(string)>(OpenProjectFile));
                 }
                 ImGui::Dummy(ImVec2(0.0f, 2.0f));
-                if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK "  Save Project"))
-                {
+                if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK "  Save Project")) {
                     string ProjectFileName = Utils::SaveFile("Pak Project (*.pakproj)\0*.pakproj\0", SaveProjectFile);
                     if (!ProjectFileName.empty()) {
                         {
@@ -340,16 +338,14 @@ int main(int, char**)
                     }
                 }
                 ImGui::Dummy(ImVec2(0.0f, 2.0f));
-                if (ImGui::MenuItem(ICON_FA_XMARK "   Exit"))
-                {
+                if (ImGui::MenuItem(ICON_FA_XMARK "   Exit")) {
                     done = true;
                 }
 
                 ImGui::EndMenu();
             }
 
-            if (ImGui::BeginMenu("View"))
-            {
+            if (ImGui::BeginMenu("View")) {
                 if (ImGui::MenuItem(ICON_FA_GEAR " Settings"))
                     showSettingsWindow = true;
                 ImGui::Dummy(ImVec2(0.0f, 2.0f));
@@ -358,8 +354,7 @@ int main(int, char**)
                 ImGui::EndMenu();
             }
 
-            if (ImGui::BeginMenu("Help"))
-            {
+            if (ImGui::BeginMenu("Help")) {
                 if (ImGui::MenuItem(ICON_FA_CIRCLE_INFO " About")) {
                     showAboutModal = true;
                 }
@@ -377,7 +372,7 @@ int main(int, char**)
         ImGui::SameLine();
         ImGui::BeginDisabled(files.empty());
         if (ImGui::Button(ICON_FA_BOX_ARCHIVE " Pack Files", ImVec2(0, 26))) {
-            bool hasEncryptedItem = std::any_of(files.begin(), files.end(), [](const PakTypes::PakFileItem& item) {
+            bool hasEncryptedItem = std::any_of(files.begin(), files.end(), [](const PakTypes::PakFileItem &item) {
                 return item.encrypted;
             });
             string pass = password;
@@ -393,16 +388,6 @@ int main(int, char**)
             }
         }
         ImGui::EndDisabled();
-
-//        if (fileDialog.showFileDialog("Save Pak File", imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(700, 310), ".pak")) {
-//            packing_files = true;
-//            ImGui::OpenPopup("Packing Progress");
-//            if (Paths::GetFileExtension(fileDialog.selected_path).empty())
-//                fileDialog.selected_path.append(".pak");
-//            else if (Paths::GetFileExtension(fileDialog.selected_path) != ".pak")
-//                Paths::ReplaceFileExtension(fileDialog.selected_path, ".pak");
-//            thread(CreatePakFile, fileDialog.selected_path).detach();
-//        }
 
         if (showAboutModal) {
             ImGui::OpenPopup("About");
@@ -479,21 +464,24 @@ int main(int, char**)
             ImGui::SameLine();
             ImGui::Text(ICON_FA_CIRCLE_QUESTION);
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Lower values mean faster compression, higher values mean better compression, default is 9");
+                ImGui::SetTooltip(
+                        "Lower values mean faster compression, higher values mean better compression, default is 9");
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
             ImGui::SliderInt("LZ4 Compression Level", reinterpret_cast<int *>(&settings.lz4CompressionLevel), 1, 16);
             ImGui::SameLine();
             ImGui::Text(ICON_FA_CIRCLE_QUESTION);
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Lower values mean faster compression, higher values mean better compression, default is 8");
+                ImGui::SetTooltip(
+                        "Lower values mean faster compression, higher values mean better compression, default is 8");
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
             ImGui::SliderInt("ZSTD Compression Level", reinterpret_cast<int *>(&settings.zstdCompressionLevel), 1, 16);
             ImGui::SameLine();
             ImGui::Text(ICON_FA_CIRCLE_QUESTION);
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Lower values mean faster compression, higher values mean better compression, default is 8");
+                ImGui::SetTooltip(
+                        "Lower values mean faster compression, higher values mean better compression, default is 8");
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
             ImGui::SeparatorText("Encryption Settings");
@@ -508,7 +496,8 @@ int main(int, char**)
             ImGui::SameLine();
             ImGui::Text(ICON_FA_CIRCLE_QUESTION);
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Lower values mean faster encryption, higher values mean more secure encryption, default is 1");
+                ImGui::SetTooltip(
+                        "Lower values mean faster encryption, higher values mean more secure encryption, default is 1");
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
             ImGui::Text("Encryption Memory Limit");
@@ -561,14 +550,14 @@ int main(int, char**)
 
             ImGui::SameLine();
             if (ImGui::Button("Toggle Compression")) {
-                for (auto& file : files) {
+                for (auto &file: files) {
                     file.compressed = !file.compressed;
                 }
             }
 
             ImGui::SameLine();
             if (ImGui::Button("Toggle Encryption")) {
-                for (auto& file : files) {
+                for (auto &file: files) {
                     file.encrypted = !file.encrypted;
                 }
             }
@@ -578,8 +567,9 @@ int main(int, char**)
 
             for (int i = 0; i < PakTypes::CompressionCount; i++) {
                 ImGui::SameLine();
-                if (ImGui::RadioButton(Packer::CompressionTypeToString((PakTypes::CompressionType)i), (int*)&compressionType, i)) {
-                    compressionType = (PakTypes::CompressionType)i;
+                if (ImGui::RadioButton(Packer::CompressionTypeToString((PakTypes::CompressionType) i),
+                                       (int *) &compressionType, i)) {
+                    compressionType = (PakTypes::CompressionType) i;
                 }
             }
 
@@ -726,7 +716,8 @@ int main(int, char**)
 
                 headerFile += "}";
 
-                ImGui::InputTextMultiline("##header", const_cast<char *>(headerFile.c_str()), headerFile.size(), ImVec2(450, ImGui::GetTextLineHeight() * 16), ImGuiInputTextFlags_ReadOnly);
+                ImGui::InputTextMultiline("##header", const_cast<char *>(headerFile.c_str()), headerFile.size(),
+                                          ImVec2(450, ImGui::GetTextLineHeight() * 16), ImGuiInputTextFlags_ReadOnly);
                 ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
                 float button_width = ImGui::CalcTextSize("Save File").x + ImGui::GetStyle().ItemSpacing.x * 2;
@@ -799,7 +790,8 @@ int main(int, char**)
                 ImGui::Text("%s", pakFile.FileEntries[i].Compressed ? "Yes" : "No");
 
                 ImGui::TableNextColumn();
-                ImGui::Text("%s", pakFile.FileEntries[i].Compressed ? Packer::CompressionTypeToString(pakFile.FileEntries[i].CompressionType) : "None");
+                ImGui::Text("%s", pakFile.FileEntries[i].Compressed ? Packer::CompressionTypeToString(
+                        pakFile.FileEntries[i].CompressionType) : "None");
 
                 ImGui::TableNextColumn();
                 ImGui::Text("%s", pakFile.FileEntries[i].Encrypted ? "Yes" : "No");
@@ -849,7 +841,8 @@ int main(int, char**)
 
         // Rendering
         ImGui::Render();
-        const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
+        const float clear_color_with_alpha[4] = {clear_color.x * clear_color.w, clear_color.y * clear_color.w,
+                                                 clear_color.z * clear_color.w, clear_color.w};
         g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, nullptr);
         g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
@@ -876,8 +869,7 @@ int main(int, char**)
 
 // Helper functions
 
-void CreatePakFile(const std::string& targetPath)
-{
+void CreatePakFile(const std::string &targetPath) {
     packStart = std::chrono::high_resolution_clock::now();
     string pwd(password);
     packer.setPassword(pwd);
@@ -889,8 +881,7 @@ void CreatePakFile(const std::string& targetPath)
     packing_complete = true;
 }
 
-void SaveSettings()
-{
+void SaveSettings() {
     std::ofstream os("settings", std::ios::binary);
     cereal::BinaryOutputArchive archive(os);
     archive(settings);
@@ -899,8 +890,7 @@ void SaveSettings()
     ApplySettings();
 }
 
-void LoadSettings()
-{
+void LoadSettings() {
     std::ifstream is("settings", std::ios::binary);
     if (is.good()) {
         cereal::BinaryInputArchive archive(is);
@@ -911,8 +901,7 @@ void LoadSettings()
     is.close();
 }
 
-void ApplySettings()
-{
+void ApplySettings() {
     packer.setZlibCompressionLevel(settings.zlibCompressionLevel);
     packer.setZstdCompressionLevel(settings.zstdCompressionLevel);
     packer.setLz4CompressionLevel(settings.lz4CompressionLevel);
@@ -923,8 +912,7 @@ void ApplySettings()
     unpacker.setEncryptionMemLimit(settings.encryptionMemLimit);
 }
 
-bool CreateDeviceD3D(HWND hWnd)
-{
+bool CreateDeviceD3D(HWND hWnd) {
     // Setup swap chain
     DXGI_SWAP_CHAIN_DESC sd;
     ZeroMemory(&sd, sizeof(sd));
@@ -945,10 +933,14 @@ bool CreateDeviceD3D(HWND hWnd)
     UINT createDeviceFlags = 0;
     //createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
     D3D_FEATURE_LEVEL featureLevel;
-    const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0, };
-    HRESULT res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
+    const D3D_FEATURE_LEVEL featureLevelArray[2] = {D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0,};
+    HRESULT res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags,
+                                                featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain,
+                                                &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
     if (res == DXGI_ERROR_UNSUPPORTED) // Try high-performance WARP software driver if hardware is not available.
-        res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
+        res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, createDeviceFlags,
+                                            featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice,
+                                            &featureLevel, &g_pd3dDeviceContext);
     if (res != S_OK)
         return false;
 
@@ -956,25 +948,34 @@ bool CreateDeviceD3D(HWND hWnd)
     return true;
 }
 
-void CleanupDeviceD3D()
-{
+void CleanupDeviceD3D() {
     CleanupRenderTarget();
-    if (g_pSwapChain) { g_pSwapChain->Release(); g_pSwapChain = nullptr; }
-    if (g_pd3dDeviceContext) { g_pd3dDeviceContext->Release(); g_pd3dDeviceContext = nullptr; }
-    if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = nullptr; }
+    if (g_pSwapChain) {
+        g_pSwapChain->Release();
+        g_pSwapChain = nullptr;
+    }
+    if (g_pd3dDeviceContext) {
+        g_pd3dDeviceContext->Release();
+        g_pd3dDeviceContext = nullptr;
+    }
+    if (g_pd3dDevice) {
+        g_pd3dDevice->Release();
+        g_pd3dDevice = nullptr;
+    }
 }
 
-void CreateRenderTarget()
-{
-    ID3D11Texture2D* pBackBuffer;
+void CreateRenderTarget() {
+    ID3D11Texture2D *pBackBuffer;
     g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
     g_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, &g_mainRenderTargetView);
     pBackBuffer->Release();
 }
 
-void CleanupRenderTarget()
-{
-    if (g_mainRenderTargetView) { g_mainRenderTargetView->Release(); g_mainRenderTargetView = nullptr; }
+void CleanupRenderTarget() {
+    if (g_mainRenderTargetView) {
+        g_mainRenderTargetView->Release();
+        g_mainRenderTargetView = nullptr;
+    }
 }
 
 // Forward declare message handler from imgui_impl_win32.cpp
@@ -985,16 +986,13 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
 // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
 // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
+LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
         return true;
 
-    switch (msg)
-    {
-        case WM_DROPFILES:
-        {
-            auto hDrop = (HDROP)wParam;
+    switch (msg) {
+        case WM_DROPFILES: {
+            auto hDrop = (HDROP) wParam;
             UINT num_files = DragQueryFile(hDrop, 0xFFFFFFFF, nullptr, 0);
 
             if (num_files == 1) {
@@ -1007,15 +1005,14 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                         pakFile = Unpacker::ParsePakFile(file_path);
                         showExtractWindow = true;
                     }
-                    catch (const exception& e) {
+                    catch (const exception &e) {
                         MessageBoxA(hWnd, e.what(), "Error", MB_OK | MB_ICONERROR);
                     }
                     break;
                 }
             }
 
-            for (UINT i = 0; i < num_files; i++)
-            {
+            for (UINT i = 0; i < num_files; i++) {
                 TCHAR file_path[MAX_PATH];
                 DragQueryFile(hDrop, i, file_path, MAX_PATH);
 
@@ -1023,17 +1020,16 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
                 Paths::getFiles(file_path, tFiles);
 
-                for (auto& tFile : tFiles)
-                {
+                for (auto &tFile: tFiles) {
                     string friendlyPath = Paths::StripPath(tFile, Paths::GetDirectory(file_path));
                     Paths::ReplaceSlashes(friendlyPath);
 
                     PakTypes::PakFileItem file = {
-                        .name = Paths::GetFileName(tFile),
-                        .path = tFile,
-                        .packedPath = friendlyPath,
-                        .size = Paths::GetFileSize(tFile),
-                        .compressed = false
+                            .name = Paths::GetFileName(tFile),
+                            .path = tFile,
+                            .packedPath = friendlyPath,
+                            .size = Paths::GetFileSize(tFile),
+                            .compressed = false
                     };
 
                     files.emplace_back(file);
@@ -1045,10 +1041,9 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             break;
         }
         case WM_SIZE:
-            if (g_pd3dDevice != nullptr && wParam != SIZE_MINIMIZED)
-            {
+            if (g_pd3dDevice != nullptr && wParam != SIZE_MINIMIZED) {
                 CleanupRenderTarget();
-                g_pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, 0);
+                g_pSwapChain->ResizeBuffers(0, (UINT) LOWORD(lParam), (UINT) HIWORD(lParam), DXGI_FORMAT_UNKNOWN, 0);
                 CreateRenderTarget();
             }
             return 0;
@@ -1063,17 +1058,14 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);
 }
 
-string SelectFolder()
-{
-    BROWSEINFO bi = { nullptr };
+string SelectFolder() {
+    BROWSEINFO bi = {nullptr};
     bi.lpszTitle = "Select a folder:";
     LPITEMIDLIST pidl = SHBrowseForFolder(&bi);
 
-    if (pidl != nullptr)
-    {
+    if (pidl != nullptr) {
         TCHAR path[MAX_PATH];
-        if (SHGetPathFromIDList(pidl, path))
-        {
+        if (SHGetPathFromIDList(pidl, path)) {
             return path;
         }
     }

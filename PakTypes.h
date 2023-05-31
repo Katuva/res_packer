@@ -1,32 +1,29 @@
 #pragma once
+
 #include <vector>
 #include <string>
 #include <fstream>
 #include <sodium.h>
 
-class PakTypes
-{
+class PakTypes {
 public:
     static const int PAK_FILE_VERSION = 1;
     const static int CompressionCount = 3;
 
-    enum CompressionType
-    {
+    enum CompressionType {
         ZLIB,
         LZ4,
         ZSTD
     };
 
-    struct PakHeader
-    {
-        char ID[4] = { "PAK" };
+    struct PakHeader {
+        char ID[4] = {"PAK"};
         unsigned int Version = PAK_FILE_VERSION;
         unsigned char Salt[crypto_pwhash_SALTBYTES];
         size_t NumEntries = 0;
     };
 
-    struct PakFileTableEntry
-    {
+    struct PakFileTableEntry {
         char FilePath[255]{};
         bool Compressed = false;
         bool Encrypted = false;
@@ -36,8 +33,7 @@ public:
         size_t Offset = 0;
     };
 
-    struct PakFile
-    {
+    struct PakFile {
         PakHeader Header;
         std::vector<PakFileTableEntry> FileEntries;
         std::ifstream File;
