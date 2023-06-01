@@ -34,6 +34,7 @@ add_executable(
 #    FileBrowser/Dirent/dirent.h
     Utils.h
     Widgets.h
+    ui.h
 #    External/hash-library/crc32.cpp
 #    External/hash-library/crc32.h
     External/IconsFontAwesome6.h

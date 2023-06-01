@@ -20,6 +20,7 @@
 #include <cereal/archives/binary.hpp>
 #include "External/IconsFontAwesome6.h"
 #include "Version.h"
+#include "ui.h"
 
 using namespace std;
 
@@ -208,7 +209,8 @@ int main(int, char **) {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
     // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
+    UI::SetupImGuiStyle();
+    //ImGui::StyleColorsDark();
     //ImGui::StyleColorsLight();
 
     // Setup Platform/Renderer backends
@@ -390,11 +392,11 @@ int main(int, char **) {
         ImGui::EndDisabled();
 
         if (showAboutModal) {
-            ImGui::OpenPopup("About");
+            ImGui::OpenPopup(ICON_FA_CIRCLE_INFO " About");
         }
 
-        if (ImGui::BeginPopupModal("About", &showAboutModal, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text(ICON_FA_CIRCLE_INFO " Resource Packer");
+        if (ImGui::BeginPopupModal(ICON_FA_CIRCLE_INFO " About", &showAboutModal, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Text("Resource Packer");
             ImGui::Dummy(ImVec2(0.0f, 5.0f));
             ImGui::Text("Version %d.%d.%d",
                         RES_PACKER_GUI_VERSION_MAJOR,
@@ -454,10 +456,10 @@ int main(int, char **) {
         ImGui::End();
 
         if (showSettingsWindow) {
-            ImGui::OpenPopup("Settings");
+            ImGui::OpenPopup(ICON_FA_GEAR " Settings");
         }
 
-        if (ImGui::BeginPopupModal("Settings", &showSettingsWindow, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(ICON_FA_GEAR " Settings", &showSettingsWindow, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::SeparatorText("Compression Settings");
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
             ImGui::SliderInt("Zlib Compression Level", reinterpret_cast<int *>(&settings.zlibCompressionLevel), 1, 9);
@@ -519,7 +521,7 @@ int main(int, char **) {
             }
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
-            float button_width = ImGui::CalcTextSize("Reset Defaults").x + ImGui::GetStyle().ItemSpacing.x * 2;
+            float button_width = ImGui::CalcTextSize("Reset Defaults").x + ImGui::GetStyle().ItemSpacing.x * 4.5f;
 
             if (ImGui::Button("Save Settings")) {
                 SaveSettings();
@@ -595,6 +597,7 @@ int main(int, char **) {
                 ImGui::TableNextRow();
 
                 ImGui::TableNextColumn();
+                ImGui::AlignTextToFramePadding();
                 ImGui::Text("%04d", i + 1);
 
                 ImGui::TableNextColumn();
@@ -720,7 +723,7 @@ int main(int, char **) {
                                           ImVec2(450, ImGui::GetTextLineHeight() * 16), ImGuiInputTextFlags_ReadOnly);
                 ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
-                float button_width = ImGui::CalcTextSize("Save File").x + ImGui::GetStyle().ItemSpacing.x * 2;
+                float button_width = ImGui::CalcTextSize("Save File").x + ImGui::GetStyle().ItemSpacing.x * 4.5f;
 
                 if (ImGui::Button(clipboardButtonLabel.c_str())) {
                     ImGui::SetClipboardText(headerFile.c_str());
@@ -775,6 +778,7 @@ int main(int, char **) {
                 ImGui::TableNextRow();
 
                 ImGui::TableNextColumn();
+                ImGui::AlignTextToFramePadding();
                 ImGui::Text("%03d", i + 1);
 
                 ImGui::TableNextColumn();
