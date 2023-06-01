@@ -181,7 +181,7 @@ int main(int, char **) {
 
     // Create application window
 //    ImGui_ImplWin32_EnableDpiAwareness();
-    WNDCLASSEXW wc = {sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr,
+    WNDCLASSEXW wc = {sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(101)), nullptr, nullptr,
                       nullptr, L"Resource Packer", nullptr};
     ::RegisterClassExW(&wc);
     HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Resource Packer...", WS_OVERLAPPEDWINDOW, windowX, windowY,
@@ -240,7 +240,7 @@ int main(int, char **) {
 
     // Our state
     bool show_demo_window = false;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    ImVec4 clear_color = ImVec4(0.156f, 0.180f, 0.219, 1.0f);
 //    io.Fonts->AddFontDefault();
     float baseFontSize = 16.0f;
 //    io.Fonts->AddFontFromFileTTF("Roboto-Medium.ttf", baseFontSize);
@@ -263,7 +263,7 @@ int main(int, char **) {
 
     LoadSettings();
 
-    string clipboardButtonLabel = "Copy to Clipboard";
+    string clipboardButtonLabel = ICON_FA_CLIPBOARD " Copy to Clipboard";
     double lastClickTime = 0.0;
     char editPackedPath[256];
     int editPackedPathIndex;
@@ -371,6 +371,31 @@ int main(int, char **) {
             Utils::OpenFile("Pak Project (*.pakproj)\0*.pakproj\0",
                             reinterpret_cast<void (*)(string)>(OpenProjectFile));
         }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button(ICON_FA_FLOPPY_DISK " Save Project", ImVec2(0, 26))) {
+            string ProjectFileName = Utils::SaveFile("Pak Project (*.pakproj)\0*.pakproj\0", SaveProjectFile);
+            if (!ProjectFileName.empty()) {
+                {
+                    ProjectFile projectFile;
+                    projectFile.version = PROJECT_FILE_VERSION;
+                    projectFile.compressionType = compressionType;
+                    projectFile.files = files;
+                    std::ofstream os(ProjectFileName, std::ios::binary);
+                    cereal::BinaryOutputArchive archive(os);
+                    archive(projectFile);
+                }
+            }
+        }
+
+        ImGui::SameLine();
+        ImGui::Dummy(ImVec2(2.0f, 0.0f));
+        ImGui::SameLine();
+        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+        ImGui::SameLine();
+        ImGui::Dummy(ImVec2(2.0f, 0.0f));
+
         ImGui::SameLine();
         ImGui::BeginDisabled(files.empty());
         if (ImGui::Button(ICON_FA_BOX_ARCHIVE " Pack Files", ImVec2(0, 26))) {
@@ -396,14 +421,54 @@ int main(int, char **) {
         }
 
         if (ImGui::BeginPopupModal(ICON_FA_CIRCLE_INFO " About", &showAboutModal, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("Resource Packer");
-            ImGui::Dummy(ImVec2(0.0f, 5.0f));
-            ImGui::Text("Version %d.%d.%d",
+            ImGui::SeparatorText("Build");
+            ImGui::Dummy(ImVec2(0.0f, 2.0f));
+            ImGui::Text("Resource Packer v%d.%d.%d",
                         RES_PACKER_GUI_VERSION_MAJOR,
                         RES_PACKER_GUI_VERSION_MINOR,
                         RES_PACKER_GUI_VERSION_PATCH);
-            ImGui::Dummy(ImVec2(0.0f, 5.0f));
-            if (ImGui::Button("OK")) {
+            ImGui::Dummy(ImVec2(0.0f, 2.0f));
+            ImGui::Text("Built on %s at %s", Utils::FormatBuildDate(__DATE__).c_str(), __TIME__);
+            ImGui::Dummy(ImVec2(0.0f, 2.0f));
+            ImGui::SeparatorText("Credits");
+            ImGui::Dummy(ImVec2(0.0f, 2.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, UI::text_prominent);
+            ImGui::Text("Dear ImGui");
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            ImGui::Text("github.com/ocornut/imgui");
+            ImGui::Dummy(ImVec2(0.0f, 2.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, UI::text_prominent);
+            ImGui::Text("Zstandard");
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            ImGui::Text("github.com/facebook/zstd");
+            ImGui::Dummy(ImVec2(0.0f, 2.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, UI::text_prominent);
+            ImGui::Text("LZ4");
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            ImGui::Text("github.com/lz4/lz4");
+            ImGui::Dummy(ImVec2(0.0f, 2.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, UI::text_prominent);
+            ImGui::Text("Miniz");
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            ImGui::Text("github.com/richgel999/miniz");
+            ImGui::Dummy(ImVec2(0.0f, 2.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, UI::text_prominent);
+            ImGui::Text("cereal");
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            ImGui::Text("github.com/USCiLab/cereal");
+            ImGui::Dummy(ImVec2(0.0f, 2.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, UI::text_prominent);
+            ImGui::Text("Sodium");
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            ImGui::Text("github.com/jedisct1/libsodium");
+            ImGui::Dummy(ImVec2(0.0f, 2.0f));
+            if (ImGui::Button(ICON_FA_XMARK " Close")) {
                 ImGui::CloseCurrentPopup();
                 showAboutModal = false;
             }
@@ -446,7 +511,7 @@ int main(int, char **) {
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
             ImGui::Text("Packing finished in: %.2f seconds", elapsed.count());
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
-            if (ImGui::Button("OK")) {
+            if (ImGui::Button(ICON_FA_XMARK " Close")) {
                 packing_complete = false;
                 ImGui::CloseCurrentPopup();
             }
@@ -487,7 +552,7 @@ int main(int, char **) {
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
             ImGui::SeparatorText("Encryption Settings");
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, UI::error_colour);
             ImGui::Text(ICON_FA_CIRCLE_EXCLAMATION);
             ImGui::PopStyleColor();
             ImGui::SameLine();
@@ -521,22 +586,22 @@ int main(int, char **) {
             }
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
-            float button_width = ImGui::CalcTextSize("Reset Defaults").x + ImGui::GetStyle().ItemSpacing.x * 4.5f;
+            float button_width = ImGui::CalcTextSize(ICON_FA_WRENCH " Reset Defaults").x + ImGui::GetStyle().ItemSpacing.x * 4.5f;
 
-            if (ImGui::Button("Save Settings")) {
+            if (ImGui::Button(ICON_FA_FLOPPY_DISK " Save Settings")) {
                 SaveSettings();
                 ImGui::CloseCurrentPopup();
                 showSettingsWindow = false;
             }
             ImGui::SameLine();
-            if (ImGui::Button("Cancel")) {
+            if (ImGui::Button(ICON_FA_XMARK " Cancel")) {
                 ImGui::CloseCurrentPopup();
                 showSettingsWindow = false;
             }
             ImGui::SameLine();
             ImGui::Dummy(ImVec2(ImGui::GetContentRegionAvail().x - button_width, 0));
             ImGui::SameLine();
-            if (ImGui::Button("Reset Defaults")) {
+            if (ImGui::Button(ICON_FA_WRENCH " Reset Defaults")) {
                 settings = Settings();
             }
 
@@ -546,7 +611,7 @@ int main(int, char **) {
         if (showFileWindow) {
             ImGui::Begin("Files", &showFileWindow, ImGuiWindowFlags_NoCollapse);
 
-            if (ImGui::Button("Clear All")) {
+            if (ImGui::Button(ICON_FA_BROOM " Clear All")) {
                 files.clear();
             }
 
@@ -565,6 +630,13 @@ int main(int, char **) {
             }
 
             ImGui::SameLine();
+            ImGui::Dummy(ImVec2(2.0f, 0.0f));
+            ImGui::SameLine();
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+            ImGui::SameLine();
+            ImGui::Dummy(ImVec2(2.0f, 0.0f));
+
+            ImGui::SameLine();
             ImGui::Text("Compression Type:");
 
             for (int i = 0; i < PakTypes::CompressionCount; i++) {
@@ -574,6 +646,13 @@ int main(int, char **) {
                     compressionType = (PakTypes::CompressionType) i;
                 }
             }
+
+            ImGui::SameLine();
+            ImGui::Dummy(ImVec2(2.0f, 0.0f));
+            ImGui::SameLine();
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+            ImGui::SameLine();
+            ImGui::Dummy(ImVec2(2.0f, 0.0f));
 
             ImGui::SameLine();
             ImGui::Text("Encryption Password:");
@@ -649,7 +728,7 @@ int main(int, char **) {
         if (ImGui::BeginPopupModal("Edit Packed Path", &showEditPackedPath, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::InputText("Packed Path", editPackedPath, IM_ARRAYSIZE(editPackedPath));
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
-            if (ImGui::Button("Save Path")) {
+            if (ImGui::Button(ICON_FA_FLOPPY_DISK " Save Path")) {
                 files[editPackedPathIndex].packedPath = editPackedPath;
                 editPackedPathIndex = -1;
                 editPackedPath[0] = '\0';
@@ -657,7 +736,7 @@ int main(int, char **) {
                 showEditPackedPath = false;
             }
             ImGui::SameLine();
-            if (ImGui::Button("Close")) {
+            if (ImGui::Button(ICON_FA_XMARK " Close")) {
                 editPackedPathIndex = -1;
                 editPackedPath[0] = '\0';
                 ImGui::CloseCurrentPopup();
@@ -670,7 +749,7 @@ int main(int, char **) {
         if (showExtractWindow) {
             ImGui::Begin("Packed Files", &showExtractWindow, ImGuiWindowFlags_NoCollapse);
 
-            if (ImGui::Button("Unpack All")) {
+            if (ImGui::Button(ICON_FA_BOX_OPEN " Unpack All")) {
                 string savePath = SelectFolder();
                 if (!savePath.empty()) {
                     bool error = false;
@@ -696,7 +775,7 @@ int main(int, char **) {
             }
 
             ImGui::SameLine();
-            if (ImGui::Button("Generate Include File")) {
+            if (ImGui::Button(ICON_FA_CODE " Generate Include File")) {
                 ImGui::OpenPopup("Include File Generator");
             }
             if (ImGui::IsItemHovered())
@@ -723,21 +802,21 @@ int main(int, char **) {
                                           ImVec2(450, ImGui::GetTextLineHeight() * 16), ImGuiInputTextFlags_ReadOnly);
                 ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
-                float button_width = ImGui::CalcTextSize("Save File").x + ImGui::GetStyle().ItemSpacing.x * 4.5f;
+                float button_width = ImGui::CalcTextSize(ICON_FA_FLOPPY_DISK " Save File").x + ImGui::GetStyle().ItemSpacing.x * 4.5f;
 
                 if (ImGui::Button(clipboardButtonLabel.c_str())) {
                     ImGui::SetClipboardText(headerFile.c_str());
-                    clipboardButtonLabel = "Copied!";
+                    clipboardButtonLabel = ICON_FA_CHECK " Copied";
                     lastClickTime = ImGui::GetTime();
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("Close")) {
+                if (ImGui::Button(ICON_FA_XMARK " Close")) {
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();
                 ImGui::Dummy(ImVec2(ImGui::GetContentRegionAvail().x - button_width, 0));
                 ImGui::SameLine();
-                if (ImGui::Button("Save File")) {
+                if (ImGui::Button(ICON_FA_FLOPPY_DISK " Save File")) {
                     string HeaderFileName = Utils::SaveFile("C++ Header File (*.h)\0*.h\0", SaveHeaderFile);
                     if (!HeaderFileName.empty()) {
                         {
@@ -749,12 +828,19 @@ int main(int, char **) {
                 }
 
                 if (lastClickTime > 0.0 && ImGui::GetTime() - lastClickTime >= 2.0) {
-                    clipboardButtonLabel = "Copy to Clipboard";
+                    clipboardButtonLabel = ICON_FA_CLIPBOARD " Copy to Clipboard";
                     lastClickTime = 0.0;
                 }
 
                 ImGui::EndPopup();
             }
+
+            ImGui::SameLine();
+            ImGui::Dummy(ImVec2(2.0f, 0.0f));
+            ImGui::SameLine();
+            ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+            ImGui::SameLine();
+            ImGui::Dummy(ImVec2(2.0f, 0.0f));
 
             ImGui::SameLine();
             ImGui::Text("Password:");
@@ -802,7 +888,7 @@ int main(int, char **) {
 
                 ImGui::TableNextColumn();
                 ImGui::PushID(i);
-                if (ImGui::Button("Unpack")) {
+                if (ImGui::Button(ICON_FA_BOX_OPEN)) {
                     string outPath = SelectFolder();
                     if (!outPath.empty()) {
                         try {
@@ -818,6 +904,8 @@ int main(int, char **) {
                         }
                     }
                 }
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Unpack");
                 ImGui::PopID();
             }
 

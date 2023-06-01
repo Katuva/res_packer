@@ -42,3 +42,17 @@ add_executable(
 )
 
 target_link_libraries(res_packer_gui PRIVATE imgui imgui-win32 imgui-dx11 lz4::lz4 $<IF:$<TARGET_EXISTS:zstd::libzstd_shared>,zstd::libzstd_shared,zstd::libzstd_static> unofficial-sodium::sodium cereal::cereal)
+
+set(RC_FILE "${CMAKE_CURRENT_SOURCE_DIR}/resources.rc")  # Replace 'resources.rc' with the actual name of your RC file
+
+# Add the RC file to the project
+target_sources(${PROJECT_NAME} PRIVATE ${RC_FILE})
+
+# Enable Windows-specific compiler flags for resource compilation
+set(CMAKE_RC_FLAGS "/l0x409")
+
+# Set the resource compiler command
+set(RC_COMPILER "${CMAKE_RC_COMPILER}")
+
+# Specify the resource compilation command
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${RC_COMPILER} ${RC_FILE})

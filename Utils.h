@@ -60,4 +60,33 @@ public:
         ss << std::fixed << std::setprecision(2) << size << ' ' << units[unitIndex];
         return ss.str();
     }
+
+    static std::string FormatBuildDate(const char* buildDate) {
+        std::string dateStr(buildDate);
+
+        std::string month = dateStr.substr(0, 3);
+        std::string day = dateStr.substr(4, 2);
+        std::string year = dateStr.substr(7, 4);
+
+        if (month == "Jan") month = "01";
+        else if (month == "Feb") month = "02";
+        else if (month == "Mar") month = "03";
+        else if (month == "Apr") month = "04";
+        else if (month == "May") month = "05";
+        else if (month == "Jun") month = "06";
+        else if (month == "Jul") month = "07";
+        else if (month == "Aug") month = "08";
+        else if (month == "Sep") month = "09";
+        else if (month == "Oct") month = "10";
+        else if (month == "Nov") month = "11";
+        else if (month == "Dec") month = "12";
+
+        day.erase(std::remove(day.begin(), day.end(), ' '), day.end());
+
+        if (day.length() == 1) {
+            day = "0" + day;
+        }
+
+        return year + "/" + month + "/" + day;
+    }
 };
