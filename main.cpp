@@ -114,9 +114,11 @@ string SaveHeaderFile(string filename) {
 
 void OpenProjectFile(const string &filename) {
     ProjectFile projectFile;
-    std::ifstream is(filename, std::ios::binary);
-    cereal::BinaryInputArchive archive(is);
-    archive(projectFile);
+    {
+        std::ifstream is(filename, std::ios::binary);
+        cereal::BinaryInputArchive archive(is);
+        archive(projectFile);
+    }
 
     if (projectFile.version != PROJECT_FILE_VERSION)
         throw std::runtime_error("Invalid project file version");
@@ -238,6 +240,37 @@ int main(int, char **) {
     iconFont = unpacker.ExtractFileToMemory(resFile, "file1");
     mainFont = unpacker.ExtractFileToMemory(resFile, "file2");
 
+    auto icon = unpacker.ExtractFileToMemory(resFile, "file3");
+    int imageWidth, imageHeight, imageChannels;
+    unsigned char* imagePixels = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(&icon[0]), icon.size(), &imageWidth, &imageHeight, &imageChannels, STBI_rgb_alpha);
+    ID3D11Texture2D* dxTexture;
+    D3D11_TEXTURE2D_DESC desc;
+    ZeroMemory(&desc, sizeof(desc));
+    desc.Width = imageWidth;
+    desc.Height = imageHeight;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    desc.CPUAccessFlags = 0;
+    desc.MiscFlags = 0;
+
+    D3D11_SUBRESOURCE_DATA subResource;
+    ZeroMemory(&subResource, sizeof(subResource));
+    subResource.pSysMem = imagePixels;
+    subResource.SysMemPitch = imageWidth * 4;
+
+    g_pd3dDevice->CreateTexture2D(&desc, &subResource, &dxTexture);
+
+    ID3D11ShaderResourceView* srv;
+    g_pd3dDevice->CreateShaderResourceView(dxTexture, nullptr, &srv);
+    auto textureID = (ImTextureID)srv;
+    dxTexture->Release();
+
+    stbi_image_free(imagePixels);
+
     // Our state
     bool show_demo_window = false;
     ImVec4 clear_color = ImVec4(0.156f, 0.180f, 0.219, 1.0f);
@@ -321,18 +354,18 @@ int main(int, char **) {
         if (ImGui::BeginMenuBar()) {
             if (ImGui::BeginMenu("File")) {
                 if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN " Open Project")) {
-                    Utils::OpenFile("Pak Project (*.pakproj)\0*.pakproj\0",
+                    Utils::OpenFile(L"Pak Project (*.pakproj)\0*.pakproj\0",
                                     reinterpret_cast<void (*)(string)>(OpenProjectFile));
                 }
                 ImGui::Dummy(ImVec2(0.0f, 2.0f));
-                if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK "  Save Project")) {
-                    string ProjectFileName = Utils::SaveFile("Pak Project (*.pakproj)\0*.pakproj\0", SaveProjectFile);
+                if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK "  Save Project", nullptr, nullptr, !files.empty())) {
+                    string ProjectFileName = Utils::SaveFile(L"Pak Project (*.pakproj)\0*.pakproj\0", SaveProjectFile);
                     if (!ProjectFileName.empty()) {
+                        ProjectFile projectFile;
+                        projectFile.version = PROJECT_FILE_VERSION;
+                        projectFile.compressionType = compressionType;
+                        projectFile.files = files;
                         {
-                            ProjectFile projectFile;
-                            projectFile.version = PROJECT_FILE_VERSION;
-                            projectFile.compressionType = compressionType;
-                            projectFile.files = files;
                             std::ofstream os(ProjectFileName, std::ios::binary);
                             cereal::BinaryOutputArchive archive(os);
                             archive(projectFile);
@@ -368,26 +401,27 @@ int main(int, char **) {
         }
 
         if (ImGui::Button(ICON_FA_FOLDER_OPEN " Open Project", ImVec2(0, 26))) {
-            Utils::OpenFile("Pak Project (*.pakproj)\0*.pakproj\0",
+            Utils::OpenFile(L"Pak Project (*.pakproj)\0*.pakproj\0",
                             reinterpret_cast<void (*)(string)>(OpenProjectFile));
         }
 
         ImGui::SameLine();
-
+        ImGui::BeginDisabled(files.empty());
         if (ImGui::Button(ICON_FA_FLOPPY_DISK " Save Project", ImVec2(0, 26))) {
-            string ProjectFileName = Utils::SaveFile("Pak Project (*.pakproj)\0*.pakproj\0", SaveProjectFile);
+            string ProjectFileName = Utils::SaveFile(L"Pak Project (*.pakproj)\0*.pakproj\0", SaveProjectFile);
             if (!ProjectFileName.empty()) {
+                ProjectFile projectFile;
+                projectFile.version = PROJECT_FILE_VERSION;
+                projectFile.compressionType = compressionType;
+                projectFile.files = files;
                 {
-                    ProjectFile projectFile;
-                    projectFile.version = PROJECT_FILE_VERSION;
-                    projectFile.compressionType = compressionType;
-                    projectFile.files = files;
                     std::ofstream os(ProjectFileName, std::ios::binary);
                     cereal::BinaryOutputArchive archive(os);
                     archive(projectFile);
                 }
             }
         }
+        ImGui::EndDisabled();
 
         ImGui::SameLine();
         ImGui::Dummy(ImVec2(2.0f, 0.0f));
@@ -406,7 +440,7 @@ int main(int, char **) {
             if (pass.empty() && hasEncryptedItem) {
                 MessageBoxA(nullptr, "Please enter an encryption password", "Error", MB_OK | MB_ICONERROR);
             } else {
-                SaveFileName = Utils::SaveFile("Pak Files (*.pak)\0*.pak\0", SavePakFile);
+                SaveFileName = Utils::SaveFile(L"Pak Files (*.pak)\0*.pak\0", SavePakFile);
                 if (!SaveFileName.empty()) {
                     packing_files = true;
                     ImGui::OpenPopup("Packing Progress");
@@ -423,12 +457,19 @@ int main(int, char **) {
         if (ImGui::BeginPopupModal(ICON_FA_CIRCLE_INFO " About", &showAboutModal, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::SeparatorText("Build");
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
+            ImGui::BeginTable("build_table", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings);
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::AlignTextToFramePadding();
+            ImGui::Image(textureID, ImVec2(imageWidth / 2, imageHeight / 2));
+            ImGui::TableNextColumn();
             ImGui::Text("Resource Packer v%d.%d.%d",
                         RES_PACKER_GUI_VERSION_MAJOR,
                         RES_PACKER_GUI_VERSION_MINOR,
                         RES_PACKER_GUI_VERSION_PATCH);
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
             ImGui::Text("Built on %s at %s", Utils::FormatBuildDate(__DATE__).c_str(), __TIME__);
+            ImGui::EndTable();
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
             ImGui::SeparatorText("Credits");
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
@@ -817,7 +858,7 @@ int main(int, char **) {
                 ImGui::Dummy(ImVec2(ImGui::GetContentRegionAvail().x - button_width, 0));
                 ImGui::SameLine();
                 if (ImGui::Button(ICON_FA_FLOPPY_DISK " Save File")) {
-                    string HeaderFileName = Utils::SaveFile("C++ Header File (*.h)\0*.h\0", SaveHeaderFile);
+                    string HeaderFileName = Utils::SaveFile(L"C++ Header File (*.h)\0*.h\0", SaveHeaderFile);
                     if (!HeaderFileName.empty()) {
                         {
                             std::ofstream out(HeaderFileName);

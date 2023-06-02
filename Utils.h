@@ -3,57 +3,69 @@
 #include <string>
 #include <iomanip>
 #include "Paths.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "External/stb_image.h"
 
 class Utils {
 public:
-    static std::string SaveFile(const char *filter, std::string (*callback)(std::string)) {
-        OPENFILENAME ofn;
+    static std::string SaveFile(const wchar_t* filter, std::string(*callback)(std::string)) {
+        OPENFILENAMEW ofn;
         wchar_t fileName[MAX_PATH] = L"";
 
         ZeroMemory(&ofn, sizeof(ofn));
         ofn.lStructSize = sizeof(ofn);
         ofn.hwndOwner = nullptr;
-        ofn.lpstrFilter = reinterpret_cast<LPCSTR>(filter);
-        ofn.lpstrFile = reinterpret_cast<LPSTR>(fileName);
+        ofn.lpstrFilter = filter;
+        ofn.lpstrFile = fileName;
         ofn.nMaxFile = MAX_PATH;
         ofn.Flags = OFN_EXPLORER | OFN_OVERWRITEPROMPT;
 
-        if (GetSaveFileName(&ofn) == TRUE) {
-            string sFileName = ofn.lpstrFile;
+        if (GetSaveFileNameW(&ofn) == TRUE) {
+            std::wstring wFileName = ofn.lpstrFile;
+            std::string sFileName;
+            sFileName.resize(wFileName.size());
+            std::use_facet<std::ctype<wchar_t>>(std::locale()).narrow(
+                    wFileName.data(), wFileName.data() + wFileName.size(), '?', &sFileName[0]);
             return callback(sFileName);
         }
 
         return "";
     }
 
-    static void OpenFile(const char *filter, void (*callback)(std::string)) {
-        OPENFILENAME ofn;
+    static void OpenFile(const wchar_t* filter, void (*callback)(std::string)) {
+        OPENFILENAMEW ofn;
         wchar_t fileName[MAX_PATH] = L"";
 
         ZeroMemory(&ofn, sizeof(ofn));
         ofn.lStructSize = sizeof(ofn);
         ofn.hwndOwner = nullptr;
-        ofn.lpstrFilter = reinterpret_cast<LPCSTR>(filter);
-        ofn.lpstrFile = reinterpret_cast<LPSTR>(fileName);
+        ofn.lpstrFilter = filter;
+        ofn.lpstrFile = fileName;
         ofn.nMaxFile = MAX_PATH;
         ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST;
 
-        if (GetOpenFileName(&ofn) == TRUE) {
-            std::string sFileName = ofn.lpstrFile;
+        if (GetOpenFileNameW(&ofn) == TRUE) {
+            std::wstring wFileName = ofn.lpstrFile;
+            std::string sFileName;
+            sFileName.resize(wFileName.size());
+            std::use_facet<std::ctype<wchar_t>>(std::locale()).narrow(
+                    wFileName.data(), wFileName.data() + wFileName.size(), '?', &sFileName[0]);
             callback(sFileName);
         }
     }
 
-
     static std::string FormatBytes(uintmax_t bytes) {
-        const int scale = 1024;
-        static const char *units[] = {"B", "KB", "MB", "GB", "TB"};
+        constexpr int scale = 1024;
+        constexpr int maxUnitIndex = 4;
+
+        static const char* units[] = {"B", "KB", "MB", "GB", "TB"};
         int unitIndex = 0;
 
-        double size = bytes;
-        while (size >= scale && unitIndex < sizeof(units) / sizeof(units[0]) - 1) {
-            size /= scale;
-            ++unitIndex;
+        auto size = static_cast<double>(bytes);
+        if (size > 0) {
+            unitIndex = static_cast<int>(std::log(size) / std::log(scale));
+            unitIndex = (unitIndex < maxUnitIndex) ? unitIndex : maxUnitIndex;
+            size /= std::pow(scale, unitIndex);
         }
 
         std::stringstream ss;

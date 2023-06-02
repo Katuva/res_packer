@@ -9,20 +9,6 @@
 #include "sodium.h"
 
 class Packer {
-private:
-    int zlibCompressionLevel = MZ_BEST_COMPRESSION;
-    int lz4CompressionLevel = 8;
-    int zstdCompressionLevel = 8;
-
-    size_t encryptionOpsLimit = crypto_pwhash_OPSLIMIT_MIN;
-    size_t encryptionMemLimit = crypto_pwhash_MEMLIMIT_MIN;
-
-    std::string password;
-    unsigned char salt[crypto_pwhash_SALTBYTES];
-    unsigned char key[crypto_secretbox_xchacha20poly1305_KEYBYTES];
-
-    void GenerateEncryptionKey();
-
 public:
     [[nodiscard]] bool CreatePakFile(
             const std::vector<PakTypes::PakFileItem> &files,
@@ -57,4 +43,18 @@ public:
     [[nodiscard]] std::string getPassword() const { return password; }
 
     void setPassword(std::string &pwd) { password = pwd; }
+
+private:
+    int zlibCompressionLevel = MZ_BEST_COMPRESSION;
+    int lz4CompressionLevel = 8;
+    int zstdCompressionLevel = 8;
+
+    size_t encryptionOpsLimit = crypto_pwhash_OPSLIMIT_MIN;
+    size_t encryptionMemLimit = crypto_pwhash_MEMLIMIT_MIN;
+
+    std::string password;
+    unsigned char salt[crypto_pwhash_SALTBYTES];
+    unsigned char key[crypto_secretbox_xchacha20poly1305_KEYBYTES];
+
+    void GenerateEncryptionKey();
 };

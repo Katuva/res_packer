@@ -8,16 +8,6 @@
 #include "sodium.h"
 
 class Unpacker {
-private:
-    size_t encryptionOpsLimit = crypto_pwhash_OPSLIMIT_MIN;
-    size_t encryptionMemLimit = crypto_pwhash_MEMLIMIT_MIN;
-
-    std::string password;
-    unsigned char salt[crypto_pwhash_SALTBYTES];
-    unsigned char key[crypto_secretbox_xchacha20poly1305_KEYBYTES];
-
-    void GenerateEncryptionKey();
-
 public:
     std::vector<char> ExtractFileToMemory(
             PakTypes::PakFile &pakFile,
@@ -45,4 +35,14 @@ public:
     [[nodiscard]] std::string getPassword() const { return password; }
 
     void setPassword(std::string &pwd) { password = pwd; }
+
+private:
+    size_t encryptionOpsLimit = crypto_pwhash_OPSLIMIT_MIN;
+    size_t encryptionMemLimit = crypto_pwhash_MEMLIMIT_MIN;
+
+    std::string password;
+    unsigned char salt[crypto_pwhash_SALTBYTES];
+    unsigned char key[crypto_secretbox_xchacha20poly1305_KEYBYTES];
+
+    void GenerateEncryptionKey();
 };

@@ -38,6 +38,7 @@ add_executable(
 #    External/hash-library/crc32.cpp
 #    External/hash-library/crc32.h
     External/IconsFontAwesome6.h
+    External/stb_image.h
     version.rc
 )
 

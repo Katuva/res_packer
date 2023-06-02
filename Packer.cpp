@@ -13,8 +13,7 @@ bool Packer::CreatePakFile(
         const std::vector<PakTypes::PakFileItem> &files,
         const std::string &targetPath,
         PakTypes::CompressionType compressionType) {
-    PakTypes::PakHeader header = {};
-
+    PakTypes::PakHeader header{};
     header.NumEntries = 0;
 
     std::vector<char> dataBuffer;
@@ -26,23 +25,21 @@ bool Packer::CreatePakFile(
 
     if (hasEncryptedItem) {
         Packer::GenerateEncryptionKey();
-
-        memcpy(header.Salt, salt, crypto_pwhash_SALTBYTES);
+        std::memcpy(header.Salt, salt, crypto_pwhash_SALTBYTES);
     }
 
     for (const auto &file: files) {
         std::ifstream fileStream(file.path, std::ios::ate | std::ios::binary);
 
-        if (fileStream.fail()) {
+        if (!fileStream) {
             std::cout << "Warning: File not found '" << file.path << "'" << std::endl;
             continue;
         }
 
-        PakTypes::PakFileTableEntry pakFileEntry;
-        memset(&pakFileEntry, 0, sizeof(PakTypes::PakFileTableEntry));
-        pakFileEntry.OriginalSize = (unsigned int) fileStream.tellg();
-        memcpy(pakFileEntry.FilePath, file.packedPath.c_str(), file.packedPath.length() + 1);
-        pakFileEntry.Offset = (unsigned int) dataBuffer.size();
+        PakTypes::PakFileTableEntry pakFileEntry{};
+        pakFileEntry.OriginalSize = static_cast<unsigned int>(fileStream.tellg());
+        std::memcpy(pakFileEntry.FilePath, file.packedPath.c_str(), file.packedPath.length() + 1);
+        pakFileEntry.Offset = static_cast<unsigned int>(dataBuffer.size());
         pakFileEntry.Compressed = file.compressed;
 
         if (pakFileEntry.Compressed) {
@@ -51,8 +48,7 @@ bool Packer::CreatePakFile(
 
         fileStream.seekg(0);
 
-        std::vector<char> fileData;
-        fileData.resize(pakFileEntry.OriginalSize);
+        std::vector<char> fileData(pakFileEntry.OriginalSize);
         fileStream.read(fileData.data(), pakFileEntry.OriginalSize);
 
         if (pakFileEntry.Compressed) {
@@ -61,14 +57,15 @@ bool Packer::CreatePakFile(
             if (compressionType == PakTypes::CompressionType::ZLIB) {
                 mz_ulong compressedSize = mz_compressBound(pakFileEntry.OriginalSize);
                 compressedData.resize(compressedSize);
-                int result = mz_compress2((unsigned char *) compressedData.data(), &compressedSize,
-                                          (const unsigned char *) fileData.data(), pakFileEntry.OriginalSize,
-                                          zlibCompressionLevel);
+                int result = mz_compress2(reinterpret_cast<unsigned char *>(compressedData.data()), &compressedSize,
+                                          reinterpret_cast<const unsigned char *>(fileData.data()),
+                                          pakFileEntry.OriginalSize, zlibCompressionLevel);
                 if (result != MZ_OK)
                     return false;
                 if (!file.encrypted) {
-                    pakFileEntry.PackedSize = (unsigned int) compressedSize;
-                    dataBuffer.insert(dataBuffer.end(), compressedData.data(), compressedData.data() + compressedSize);
+                    pakFileEntry.PackedSize = static_cast<unsigned int>(compressedSize);
+                    dataBuffer.insert(dataBuffer.end(), compressedData.begin(),
+                                      compressedData.begin() + compressedSize);
                 }
             } else if (compressionType == PakTypes::CompressionType::LZ4) {
                 size_t compressedSize = LZ4_compressBound(pakFileEntry.OriginalSize);
@@ -79,9 +76,9 @@ bool Packer::CreatePakFile(
                     return false;
                 compressedData.resize(compressed_size);
                 if (!file.encrypted) {
-                    pakFileEntry.PackedSize = (unsigned int) compressed_size;
-                    dataBuffer.insert(dataBuffer.end(), compressedData.data(),
-                                      compressedData.data() + compressed_size);
+                    pakFileEntry.PackedSize = static_cast<unsigned int>(compressed_size);
+                    dataBuffer.insert(dataBuffer.end(), compressedData.begin(),
+                                      compressedData.begin() + compressed_size);
                 }
             } else if (compressionType == PakTypes::CompressionType::ZSTD) {
                 size_t compressedSize = ZSTD_compressBound(pakFileEntry.OriginalSize);
@@ -92,31 +89,28 @@ bool Packer::CreatePakFile(
                     return false;
                 compressedData.resize(compressed_size);
                 if (!file.encrypted) {
-                    pakFileEntry.PackedSize = (unsigned int) compressed_size;
-                    dataBuffer.insert(dataBuffer.end(), compressedData.data(),
-                                      compressedData.data() + compressed_size);
+                    pakFileEntry.PackedSize = static_cast<unsigned int>(compressed_size);
+                    dataBuffer.insert(dataBuffer.end(), compressedData.begin(),
+                                      compressedData.begin() + compressed_size);
                 }
             } else {
-                std::cout << "Unknown compression type: " << compressionType << std::endl;
-                return false;
+                throw std::invalid_argument("Unknown compression type");
             }
 
             if (file.encrypted) {
                 Packer::Encrypt(compressedData);
-                pakFileEntry.PackedSize = (unsigned int) compressedData.size();
+                pakFileEntry.PackedSize = static_cast<unsigned int>(compressedData.size());
                 pakFileEntry.Encrypted = true;
-                dataBuffer.insert(dataBuffer.end(), compressedData.data(),
-                                  compressedData.data() + compressedData.size());
+                dataBuffer.insert(dataBuffer.end(), compressedData.begin(),
+                                  compressedData.begin() + compressedData.size());
             }
         } else {
             pakFileEntry.PackedSize = pakFileEntry.OriginalSize;
 
             if (file.encrypted) {
                 Packer::Encrypt(fileData);
-                pakFileEntry.PackedSize = (unsigned int) fileData.size();
+                pakFileEntry.PackedSize = static_cast<unsigned int>(fileData.size());
                 pakFileEntry.Encrypted = true;
-            } else {
-                pakFileEntry.PackedSize = pakFileEntry.OriginalSize;
             }
 
             dataBuffer.insert(dataBuffer.end(), fileData.begin(), fileData.end());
@@ -126,23 +120,39 @@ bool Packer::CreatePakFile(
         fileStream.close();
     }
 
-    header.NumEntries = fileEntries.size();
+    header.NumEntries = static_cast<unsigned int>(fileEntries.size());
 
     std::ofstream output(targetPath, std::ios::binary);
+    if (!output) {
+        throw std::runtime_error("Failed to open output file: " + targetPath);
+    }
 
-    output.write(reinterpret_cast<char *>(&header), sizeof(PakTypes::PakHeader));
+    output.write(reinterpret_cast<const char *>(&header), sizeof(PakTypes::PakHeader));
+    if (!output) {
+        throw std::runtime_error("Failed to write header to output file: " + targetPath);
+    }
 
     const unsigned int baseOffset =
-            sizeof(PakTypes::PakHeader) + (unsigned int) fileEntries.size() * sizeof(PakTypes::PakFileTableEntry);
+            sizeof(PakTypes::PakHeader) +
+            static_cast<unsigned int>(fileEntries.size()) * sizeof(PakTypes::PakFileTableEntry);
 
     for (PakTypes::PakFileTableEntry &e: fileEntries) {
         e.Offset += baseOffset;
-        output.write(reinterpret_cast<char *>(&e), sizeof(PakTypes::PakFileTableEntry));
+        output.write(reinterpret_cast<const char *>(&e), sizeof(PakTypes::PakFileTableEntry));
+        if (!output) {
+            throw std::runtime_error("Failed to write file entry to output file: " + targetPath);
+        }
     }
 
     output.write(dataBuffer.data(), dataBuffer.size());
+    if (!output) {
+        throw std::runtime_error("Failed to write data buffer to output file: " + targetPath);
+    }
 
     output.close();
+    if (!output) {
+        throw std::runtime_error("Failed to close output file: " + targetPath);
+    }
 
     return true;
 }

@@ -7,7 +7,7 @@
 #include "External/miniz/miniz.h"
 #include "sodium.h"
 
-std::vector<char> Unpacker::ExtractFileToMemory(PakTypes::PakFile &pakFile, const std::string &filePath) {
+std::vector<char> Unpacker::ExtractFileToMemory(PakTypes::PakFile& pakFile, const std::string& filePath) {
     bool hasEncryptedItem = std::any_of(pakFile.FileEntries.begin(), pakFile.FileEntries.end(),
                                         [](const PakTypes::PakFileTableEntry &item) {
                                             return item.Encrypted;
@@ -15,63 +15,67 @@ std::vector<char> Unpacker::ExtractFileToMemory(PakTypes::PakFile &pakFile, cons
 
     if (hasEncryptedItem) {
         memcpy(salt, pakFile.Header.Salt, crypto_pwhash_SALTBYTES);
-
         Unpacker::GenerateEncryptionKey();
     }
 
-    for (int i = 0; i < pakFile.Header.NumEntries; i++) {
-        PakTypes::PakFileTableEntry &entry = pakFile.FileEntries[i];
-        if (std::string(entry.FilePath) == filePath) {
-            pakFile.File.seekg(entry.Offset);
+    auto fileEntryIt = std::find_if(pakFile.FileEntries.begin(), pakFile.FileEntries.end(),
+                                    [&filePath](const PakTypes::PakFileTableEntry &entry) {
+                                        return std::string(entry.FilePath) == filePath;
+                                    });
 
-            std::vector<char> dataBuffer(entry.PackedSize);
-            pakFile.File.read(dataBuffer.data(), dataBuffer.size());
+    if (fileEntryIt != pakFile.FileEntries.end()) {
+        const PakTypes::PakFileTableEntry &entry = *fileEntryIt;
 
-            if (entry.Encrypted) {
-                Decrypt(dataBuffer);
-            }
+        pakFile.File.seekg(entry.Offset);
 
-            std::vector<char> buffer;
-            if (entry.Compressed) {
-                buffer.resize(entry.OriginalSize);
-                if (entry.CompressionType == PakTypes::CompressionType::ZLIB) {
-                    mz_ulong uncompressedSize = entry.OriginalSize;
-                    int result = mz_uncompress((unsigned char *) buffer.data(), &uncompressedSize,
-                                               (const unsigned char *) dataBuffer.data(), entry.PackedSize);
-                    if (result != MZ_OK)
-                        throw std::exception("Failed to decompress file");
-                } else if (entry.CompressionType == PakTypes::CompressionType::LZ4) {
-                    int decompressed_size = LZ4_decompress_safe(dataBuffer.data(), buffer.data(), dataBuffer.size(),
-                                                                buffer.size());
-                    if (decompressed_size <= 0)
-                        throw std::exception("Failed to decompress file");
-                } else if (entry.CompressionType == PakTypes::CompressionType::ZSTD) {
-                    size_t decompressed_size = ZSTD_decompress(buffer.data(), buffer.size(), dataBuffer.data(),
-                                                               dataBuffer.size());
-                    if (ZSTD_isError(decompressed_size))
-                        throw std::exception("Failed to decompress file");
-                } else {
-                    throw std::invalid_argument("Unknown compression type");
-                }
-            } else {
-                buffer.resize(entry.OriginalSize);
+        std::vector<char> dataBuffer(entry.PackedSize);
+        pakFile.File.read(dataBuffer.data(), dataBuffer.size());
 
-                buffer = dataBuffer;
-            }
-
-            return buffer;
+        if (entry.Encrypted) {
+            Decrypt(dataBuffer);
         }
-    }
 
-    throw std::exception("File not found in pak file");
+        std::vector<char> buffer;
+        if (entry.Compressed) {
+            buffer.resize(entry.OriginalSize);
+
+            if (entry.CompressionType == PakTypes::CompressionType::ZLIB) {
+                mz_ulong uncompressedSize = entry.OriginalSize;
+                int result = mz_uncompress(reinterpret_cast<unsigned char *>(buffer.data()), &uncompressedSize,
+                                           reinterpret_cast<const unsigned char *>(dataBuffer.data()),
+                                           entry.PackedSize);
+                if (result != MZ_OK)
+                    throw std::runtime_error("Failed to decompress file: " + filePath);
+            } else if (entry.CompressionType == PakTypes::CompressionType::LZ4) {
+                int decompressed_size = LZ4_decompress_safe(dataBuffer.data(), buffer.data(), dataBuffer.size(),
+                                                            buffer.size());
+                if (decompressed_size <= 0)
+                    throw std::runtime_error("Failed to decompress file: " + filePath);
+            } else if (entry.CompressionType == PakTypes::CompressionType::ZSTD) {
+                size_t decompressed_size = ZSTD_decompress(buffer.data(), buffer.size(), dataBuffer.data(),
+                                                           dataBuffer.size());
+                if (ZSTD_isError(decompressed_size))
+                    throw std::runtime_error("Failed to decompress file: " + filePath);
+            } else {
+                throw std::invalid_argument("Unknown compression type");
+            }
+        } else {
+            buffer = std::move(dataBuffer);
+        }
+
+        return buffer;
+    } else {
+        throw std::runtime_error("File not found in pak file: " + filePath);
+    }
 }
 
-void
-Unpacker::ExtractFileToDisk(PakTypes::PakFile &pakFile, const std::string &outputPath, const std::string &filePath) {
+
+void Unpacker::ExtractFileToDisk(PakTypes::PakFile &pakFile, const std::string &outputPath, const std::string &filePath) {
     std::vector<char> buffer = ExtractFileToMemory(pakFile, filePath);
     std::string filename = std::filesystem::path(filePath).filename().string();
 
-    std::ofstream file(outputPath + "/" + filename, std::ios::binary);
+    std::filesystem::path outputFile = std::filesystem::path(outputPath) / filename;
+    std::ofstream file(outputFile, std::ios::binary);
     file.write(buffer.data(), buffer.size());
     file.close();
 }
@@ -80,27 +84,28 @@ PakTypes::PakFile Unpacker::ParsePakFile(const std::string &inputPath) {
     PakTypes::PakFile file;
     std::ifstream pakFile(inputPath, std::ios::binary);
 
+    if (!pakFile)
+        throw std::runtime_error("Failed to open pak file: " + inputPath);
+
     file.File = std::move(pakFile);
 
-    if (file.File.fail())
-        throw std::exception("Failed to open pak file");
-
     PakTypes::PakHeader header;
-    file.File.read(reinterpret_cast<char *>(&header), sizeof(PakTypes::PakHeader));
+    if (!file.File.read(reinterpret_cast<char*>(&header), sizeof(PakTypes::PakHeader)))
+        throw std::runtime_error("Failed to read header from pak file: " + inputPath);
 
     if (std::string(header.ID) != "PAK")
-        throw std::exception("Not a valid PAK file");
+        throw std::runtime_error("Invalid PAK file format: " + inputPath);
 
     if (header.Version != PakTypes::PAK_FILE_VERSION)
-        throw std::exception("Unsupported PAK file version");
+        throw std::runtime_error("Unsupported PAK file version: " + inputPath);
 
-    auto *pEntries = new PakTypes::PakFileTableEntry[header.NumEntries];
-    file.File.read(reinterpret_cast<char *>(pEntries), sizeof(PakTypes::PakFileTableEntry) * header.NumEntries);
+    std::vector<PakTypes::PakFileTableEntry> entries(header.NumEntries);
+    if (!file.File.read(reinterpret_cast<char*>(entries.data()), sizeof(PakTypes::PakFileTableEntry) * header.NumEntries))
+        throw std::runtime_error("Failed to read file entries from pak file: " + inputPath);
 
     file.Header = header;
-    file.FileEntries = std::vector<PakTypes::PakFileTableEntry>(pEntries, pEntries + header.NumEntries);
-
-    delete[] pEntries;
+    file.FileEntries.reserve(entries.size() + header.NumEntries);
+    file.FileEntries.insert(file.FileEntries.end(), entries.begin(), entries.end());
 
     return file;
 }
