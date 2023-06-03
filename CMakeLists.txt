@@ -34,12 +34,14 @@ add_executable(
 #    FileBrowser/Dirent/dirent.h
     Utils.h
     Widgets.h
-    ui.h
+    Theme.h
 #    External/hash-library/crc32.cpp
 #    External/hash-library/crc32.h
     External/IconsFontAwesome6.h
     External/stb_image.h
     version.rc
+    Gui.cpp
+    Gui.h
 )
 
 target_link_libraries(res_packer_gui PRIVATE imgui imgui-win32 imgui-dx11 lz4::lz4 $<IF:$<TARGET_EXISTS:zstd::libzstd_shared>,zstd::libzstd_shared,zstd::libzstd_static> unofficial-sodium::sodium cereal::cereal)

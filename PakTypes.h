@@ -7,8 +7,8 @@
 
 class PakTypes {
 public:
-    static const int PAK_FILE_VERSION = 1;
-    const static int CompressionCount = 3;
+    static constexpr auto PAK_FILE_VERSION = 1;
+    static constexpr auto CompressionCount = 3;
 
     enum CompressionType {
         ZLIB,

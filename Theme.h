@@ -2,10 +2,10 @@
 
 #include <imgui.h>
 
-class UI {
+class Theme {
 public:
-    static constexpr ImVec4 error_colour = ImVec4(0.749f, 0.380f, 0.415f, 1.0f);
-    static constexpr ImVec4 text_prominent = ImVec4(0.752f, 0.505f, 0.674f, 1.0f);
+    static constexpr auto error_colour = ImVec4(0.749f, 0.380f, 0.415f, 1.0f);
+    static constexpr auto text_prominent = ImVec4(0.752f, 0.505f, 0.674f, 1.0f);
 
     static void SetupImGuiStyle()
     {

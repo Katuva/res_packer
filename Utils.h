@@ -2,9 +2,9 @@
 
 #include <string>
 #include <iomanip>
+#include <shlobj.h>
+#include <functional>
 #include "Paths.h"
-#define STB_IMAGE_IMPLEMENTATION
-#include "External/stb_image.h"
 
 class Utils {
 public:
@@ -32,7 +32,7 @@ public:
         return "";
     }
 
-    static void OpenFile(const wchar_t* filter, void (*callback)(std::string)) {
+    static void OpenFile(const wchar_t* filter, const std::function<void(const std::string&)>& callback) {
         OPENFILENAMEW ofn;
         wchar_t fileName[MAX_PATH] = L"";
 
@@ -100,5 +100,21 @@ public:
         }
 
         return year + "/" + month + "/" + day;
+    }
+
+    static std::string TruncatePath(const std::string &path, size_t maxLength, bool packed = false) {
+        std::filesystem::path fsPath(path);
+
+        std::string dir = fsPath.parent_path().string();
+
+        if (dir.length() > maxLength) {
+            dir = "..." + dir.substr(dir.length() - maxLength);
+        }
+
+        if (packed) {
+            dir = dir + "/" + fsPath.filename().string();
+        }
+
+        return dir;
     }
 };
