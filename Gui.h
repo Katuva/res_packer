@@ -3,7 +3,6 @@
 #include <fstream>
 #include <string>
 #include <thread>
-#include <filesystem>
 #include <cereal/types/vector.hpp>
 #include <cereal/types/string.hpp>
 #include <cereal/archives/binary.hpp>
@@ -88,7 +87,7 @@ namespace ResPacker {
 
         Packer packer;
 
-        PakTypes::CompressionType compressionType = PakTypes::CompressionType::ZLIB;
+        PakTypes::CompressionType compressionType = PakTypes::CompressionType::ZSTD;
         std::string SaveFileName;
         char password[256] = "";
         std::chrono::high_resolution_clock::time_point packStart;

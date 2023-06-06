@@ -3,7 +3,12 @@
 #include <vector>
 #include <string>
 #include <fstream>
+
+#include "PackerConfig.h"
+
+#ifdef USE_ENCRYPTION
 #include <sodium.h>
+#endif
 
 class PakTypes {
 public:
@@ -19,7 +24,11 @@ public:
     struct PakHeader {
         char ID[4] = {"PAK"};
         unsigned int Version = PAK_FILE_VERSION;
+#ifdef USE_ENCRYPTION
         unsigned char Salt[crypto_pwhash_SALTBYTES];
+#else
+        unsigned char Salt[0];
+#endif
         size_t NumEntries = 0;
     };
 

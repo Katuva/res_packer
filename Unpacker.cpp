@@ -2,21 +2,34 @@
 #include <fstream>
 #include <string>
 #include <filesystem>
+
+#ifdef USE_LZ4
 #include "lz4hc.h"
+#endif
+#ifdef USE_ZSTD
 #include "zstd.h"
+#endif
+#ifdef USE_ZLIB
 #include "External/miniz/miniz.h"
+#endif
+#ifdef USE_ENCRYPTION
 #include "sodium.h"
+#endif
 
 std::vector<char> Unpacker::ExtractFileToMemory(PakTypes::PakFile& pakFile, const std::string& filePath) {
     bool hasEncryptedItem = std::any_of(pakFile.FileEntries.begin(), pakFile.FileEntries.end(),
                                         [](const PakTypes::PakFileTableEntry &item) {
                                             return item.Encrypted;
                                         });
-
+#ifdef USE_ENCRYPTION
     if (hasEncryptedItem) {
         memcpy(salt, pakFile.Header.Salt, crypto_pwhash_SALTBYTES);
         Unpacker::GenerateEncryptionKey();
     }
+#else
+    if (hasEncryptedItem)
+        throw std::runtime_error("Encryption is not supported");
+#endif
 
     auto fileEntryIt = std::find_if(pakFile.FileEntries.begin(), pakFile.FileEntries.end(),
                                     [&filePath](const PakTypes::PakFileTableEntry &entry) {
@@ -31,31 +44,45 @@ std::vector<char> Unpacker::ExtractFileToMemory(PakTypes::PakFile& pakFile, cons
         std::vector<char> dataBuffer(entry.PackedSize);
         pakFile.File.read(dataBuffer.data(), dataBuffer.size());
 
+#ifdef USE_ENCRYPTION
         if (entry.Encrypted) {
             Decrypt(dataBuffer);
         }
+#endif
 
         std::vector<char> buffer;
         if (entry.Compressed) {
             buffer.resize(entry.OriginalSize);
 
             if (entry.CompressionType == PakTypes::CompressionType::ZLIB) {
+#ifdef USE_ZLIB
                 mz_ulong uncompressedSize = entry.OriginalSize;
                 int result = mz_uncompress(reinterpret_cast<unsigned char *>(buffer.data()), &uncompressedSize,
                                            reinterpret_cast<const unsigned char *>(dataBuffer.data()),
                                            entry.PackedSize);
                 if (result != MZ_OK)
                     throw std::runtime_error("Failed to decompress file: " + filePath);
+#else
+                throw std::runtime_error("ZLIB compression is not supported");
+#endif
             } else if (entry.CompressionType == PakTypes::CompressionType::LZ4) {
+#ifdef USE_LZ4
                 int decompressed_size = LZ4_decompress_safe(dataBuffer.data(), buffer.data(), dataBuffer.size(),
                                                             buffer.size());
                 if (decompressed_size <= 0)
                     throw std::runtime_error("Failed to decompress file: " + filePath);
+#else
+                throw std::runtime_error("LZ4 compression is not supported");
+#endif
             } else if (entry.CompressionType == PakTypes::CompressionType::ZSTD) {
+#ifdef USE_ZSTD
                 size_t decompressed_size = ZSTD_decompress(buffer.data(), buffer.size(), dataBuffer.data(),
                                                            dataBuffer.size());
                 if (ZSTD_isError(decompressed_size))
                     throw std::runtime_error("Failed to decompress file: " + filePath);
+#else
+                throw std::runtime_error("ZSTD compression is not supported");
+#endif
             } else {
                 throw std::invalid_argument("Unknown compression type");
             }
@@ -110,6 +137,7 @@ PakTypes::PakFile Unpacker::ParsePakFile(const std::string &inputPath) {
     return file;
 }
 
+#ifdef USE_ENCRYPTION
 void Unpacker::GenerateEncryptionKey() {
     sodium_init();
 
@@ -142,3 +170,4 @@ void Unpacker::Decrypt(std::vector<char> &dataBuffer) const {
 
     delete[] decrypted;
 }
+#endif

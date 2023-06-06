@@ -42,6 +42,7 @@ add_executable(
     version.rc
     Gui.cpp
     Gui.h
+    PackerConfig.h
 )
 
 target_link_libraries(res_packer_gui PRIVATE imgui imgui-win32 imgui-dx11 lz4::lz4 $<IF:$<TARGET_EXISTS:zstd::libzstd_shared>,zstd::libzstd_shared,zstd::libzstd_static> unofficial-sodium::sodium cereal::cereal)

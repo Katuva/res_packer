@@ -62,6 +62,7 @@ bool Packer::CreatePakFile(
                                           pakFileEntry.OriginalSize, zlibCompressionLevel);
                 if (result != MZ_OK)
                     return false;
+                compressedData.resize(compressedSize);
                 if (!file.encrypted) {
                     pakFileEntry.PackedSize = static_cast<unsigned int>(compressedSize);
                     dataBuffer.insert(dataBuffer.end(), compressedData.begin(),
