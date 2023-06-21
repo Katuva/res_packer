@@ -4,8 +4,12 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <iostream>
+#include <algorithm>
 #include "PakTypes.h"
 #include "External/miniz/miniz.h"
+#include "lz4hc.h"
+#include "zstd.h"
 #include "sodium.h"
 
 class Packer {

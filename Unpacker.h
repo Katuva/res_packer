@@ -4,8 +4,21 @@
 #include <string>
 #include <fstream>
 #include <exception>
+#include <filesystem>
 #include "PakTypes.h"
+
+#ifdef USE_LZ4
+#include "lz4hc.h"
+#endif
+#ifdef USE_ZSTD
+#include "zstd.h"
+#endif
+#ifdef USE_ZLIB
+#include "External/miniz/miniz.h"
+#endif
+#ifdef USE_ENCRYPTION
 #include "sodium.h"
+#endif
 
 class Unpacker {
 public:

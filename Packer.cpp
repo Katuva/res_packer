@@ -1,13 +1,4 @@
 #include "Packer.h"
-#include <fstream>
-#include <iostream>
-#include <string>
-#include <algorithm>
-#include "lz4hc.h"
-#include "zstd.h"
-#include "External/miniz/miniz.h"
-#include "sodium.h"
-#include "PakTypes.h"
 
 bool Packer::CreatePakFile(
         const std::vector<PakTypes::PakFileItem> &files,

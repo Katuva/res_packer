@@ -8,6 +8,7 @@
 #include <cereal/archives/binary.hpp>
 #include "imgui.h"
 #include "imgui_internal.h"
+#include <GLFW/glfw3.h>
 #include "External/IconsFontAwesome6.h"
 #include "Version.h"
 #include "Utils.h"
@@ -22,7 +23,7 @@ namespace ResPacker {
     class Gui {
     public:
         Gui();
-        void Setup();
+        void Setup(float width, float height);
         void RenderPlaceholder() const;
         void RenderMainMenu();
         void RenderAboutWindow();
@@ -35,13 +36,17 @@ namespace ResPacker {
         void RenderHeaderGenerationWindow();
         void RenderUnpackingCompleteWindow();
 
-        bool mainLoopDone = false;
+        GLFWwindow* window = nullptr;
 
         bool showFileWindow = false;
         bool showExtractWindow = false;
 
-        ImTextureID iconTexture = nullptr;
+        bool renderingPaused = false;
+
+        GLuint iconTexture;
         int iconWidth = 0, iconHeight = 0;
+
+        float scale = 1.0f;
 
         ImFont *font2 = nullptr;
 

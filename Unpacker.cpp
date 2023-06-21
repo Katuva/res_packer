@@ -1,20 +1,4 @@
 #include "Unpacker.h"
-#include <fstream>
-#include <string>
-#include <filesystem>
-
-#ifdef USE_LZ4
-#include "lz4hc.h"
-#endif
-#ifdef USE_ZSTD
-#include "zstd.h"
-#endif
-#ifdef USE_ZLIB
-#include "External/miniz/miniz.h"
-#endif
-#ifdef USE_ENCRYPTION
-#include "sodium.h"
-#endif
 
 std::vector<char> Unpacker::ExtractFileToMemory(PakTypes::PakFile& pakFile, const std::string& filePath) {
     bool hasEncryptedItem = std::any_of(pakFile.FileEntries.begin(), pakFile.FileEntries.end(),

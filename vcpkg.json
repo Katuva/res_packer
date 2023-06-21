@@ -18,5 +18,8 @@
     "name" : "zstd",
     "version>=" : "1.5.5",
     "$comment" : "    find_package(zstd CONFIG REQUIRED)\n\n    target_link_libraries(main PRIVATE $<IF:$<TARGET_EXISTS:zstd::libzstd_shared>,zstd::libzstd_shared,zstd::libzstd_static>)\n"
+  }, {
+    "name" : "glfw3",
+    "version>=" : "3.3.8#2"
   } ]
 }

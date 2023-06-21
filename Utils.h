@@ -117,4 +117,13 @@ public:
 
         return dir;
     }
+
+    static std::string GetCurrentWorkingDirectory() {
+        char buffer[MAX_PATH];
+        GetModuleFileName(nullptr, buffer, MAX_PATH);
+        std::string path(buffer);
+        size_t lastSeparator = path.find_last_of("\\/");
+
+        return path.substr(0, lastSeparator);
+    }
 };

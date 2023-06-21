@@ -17,8 +17,8 @@ namespace ResPacker {
         LoadSettings();
     }
 
-    void Gui::Setup() {
-        windowSize = ImGui::GetIO().DisplaySize;
+    void Gui::Setup(float width, float height) {
+        windowSize = ImVec2(width, height);
     }
 
     void Gui::RenderPlaceholder() const {
@@ -26,15 +26,16 @@ namespace ResPacker {
             return;
         }
 
-        const ImVec2 placeHolderWindowSize(400, 44);
+        const ImVec2 placeHolderWindowSize(400 * scale, 44 * scale);
         const std::string placeholderText = "Drag and drop files here...";
 
-        ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.5f, windowSize.y * 0.5f), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowPos(ImVec2(windowSize.x * 0.5f, windowSize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
         ImGui::SetNextWindowSize(placeHolderWindowSize);
         ImGui::Begin("DragDrop", nullptr, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings);
 
         ImGui::PushFont(font2);
         ImGui::SetCursorPosX((placeHolderWindowSize.x - ImGui::CalcTextSize(placeholderText.c_str()).x) / 2);
+        ImGui::SetCursorPosY((placeHolderWindowSize.y - ImGui::CalcTextSize(placeholderText.c_str()).y) / 2);
         ImGui::Text("%s", placeholderText.c_str());
         ImGui::PopFont();
 
@@ -43,7 +44,10 @@ namespace ResPacker {
 
     void Gui::RenderMainMenu() {
         ImGui::SetNextWindowPos(ImVec2(0, 0));
-        ImGui::SetNextWindowSize(ImVec2(windowSize.x, 65));
+        if (scale > 1)
+            ImGui::SetNextWindowSize(ImVec2(windowSize.x, 56 * scale));
+        else
+            ImGui::SetNextWindowSize(ImVec2(windowSize.x, 67));
         ImGui::Begin("Toolbar", nullptr,
                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoResize |
                      ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings |
@@ -60,11 +64,13 @@ namespace ResPacker {
                 }
                 ImGui::Dummy(ImVec2(0.0f, 2.0f));
                 if (ImGui::MenuItem(ICON_FA_XMARK "   Exit")) {
-                    mainLoopDone = true;
+                    glfwSetWindowShouldClose(window, GLFW_TRUE);
                 }
 
                 ImGui::EndMenu();
             }
+
+            ImGui::Dummy(ImVec2(2.0f, 0.0f));
 
             if (ImGui::BeginMenu("View")) {
                 if (ImGui::MenuItem(ICON_FA_GEAR " Settings"))
@@ -74,6 +80,8 @@ namespace ResPacker {
 
                 ImGui::EndMenu();
             }
+
+            ImGui::Dummy(ImVec2(2.0f, 0.0f));
 
             if (ImGui::BeginMenu("Help")) {
                 if (ImGui::MenuItem(ICON_FA_CIRCLE_INFO " About")) {
@@ -86,13 +94,13 @@ namespace ResPacker {
             ImGui::EndMenuBar();
         }
 
-        if (ImGui::Button(ICON_FA_FOLDER_OPEN " Open Project", ImVec2(0, 26))) {
+        if (ImGui::Button(ICON_FA_FOLDER_OPEN " Open Project")) {
             Gui::OpenProject();
         }
 
         ImGui::SameLine();
         ImGui::BeginDisabled(files.empty());
-        if (ImGui::Button(ICON_FA_FLOPPY_DISK " Save Project", ImVec2(0, 26))) {
+        if (ImGui::Button(ICON_FA_FLOPPY_DISK " Save Project")) {
             Gui::SaveProject();
         }
         ImGui::EndDisabled();
@@ -106,7 +114,7 @@ namespace ResPacker {
 
         ImGui::SameLine();
         ImGui::BeginDisabled(files.empty());
-        if (ImGui::Button(ICON_FA_BOX_ARCHIVE " Pack Files", ImVec2(0, 26))) {
+        if (ImGui::Button(ICON_FA_BOX_ARCHIVE " Pack Files")) {
             bool hasEncryptedItem = std::any_of(files.begin(), files.end(), [](const PakTypes::PakFileItem &item) {
                 return item.encrypted;
             });
@@ -133,14 +141,17 @@ namespace ResPacker {
 
         ImGui::OpenPopup(ICON_FA_CIRCLE_INFO " About");
 
-        if (ImGui::BeginPopupModal(ICON_FA_CIRCLE_INFO " About", &showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(ICON_FA_CIRCLE_INFO " About", &showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
             ImGui::SeparatorText("Build");
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
             ImGui::BeginTable("build_table", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings);
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::AlignTextToFramePadding();
-            ImGui::Image(iconTexture, ImVec2(iconWidth / 2, iconHeight / 2));
+            if (scale > 1)
+                ImGui::Image((void*)(intptr_t)iconTexture, ImVec2(iconWidth / 1.5, iconHeight / 1.5));
+            else
+                ImGui::Image((void*)(intptr_t)iconTexture, ImVec2(iconWidth / 2, iconHeight / 2));
             ImGui::TableNextColumn();
             ImGui::Text("Resource Packer v%d.%d.%d",
                         RES_PACKER_GUI_VERSION_MAJOR,
@@ -203,10 +214,10 @@ namespace ResPacker {
 
         ImGui::OpenPopup("Packing Progress");
 
-        if (ImGui::BeginPopupModal("Packing Progress", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal("Packing Progress", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
             ImGui::Text("Packing files...");
             ImGui::Dummy(ImVec2(0.0f, 5.0f));
-            Widgets::IndeterminateProgressBar(ImVec2(300, 20));
+            Widgets::IndeterminateProgressBar(ImVec2(300 * scale, 20 * scale));
             if (!packing_files) {
                 ImGui::CloseCurrentPopup();
             }
@@ -221,7 +232,7 @@ namespace ResPacker {
 
         ImGui::OpenPopup("Packing Result");
 
-        if (ImGui::BeginPopupModal("Packing Result", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal("Packing Result", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
             std::chrono::duration<double> elapsed = packEnd - packStart;
             ImGui::Text("Packing has been completed");
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
@@ -246,7 +257,7 @@ namespace ResPacker {
 
         ImGui::OpenPopup(ICON_FA_GEAR " Settings");
 
-        if (ImGui::BeginPopupModal(ICON_FA_GEAR " Settings", &showSettingsWindow, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(ICON_FA_GEAR " Settings", &showSettingsWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
             ImGui::SeparatorText("Compression Settings");
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
             ImGui::SliderInt("Zlib Compression Level", reinterpret_cast<int *>(&settings.zlibCompressionLevel), 1, 9);
@@ -336,7 +347,7 @@ namespace ResPacker {
             return;
         }
 
-        ImGui::Begin("Files", &showFileWindow, ImGuiWindowFlags_NoCollapse);
+        ImGui::Begin("Files To Pack", &showFileWindow, ImGuiWindowFlags_NoCollapse);
 
         if (ImGui::Button(ICON_FA_BROOM " Clear All")) {
             files.clear();
@@ -385,6 +396,8 @@ namespace ResPacker {
         ImGui::Text("Encryption Password:");
         ImGui::SameLine();
         ImGui::InputText("##password", password, IM_ARRAYSIZE(password), ImGuiInputTextFlags_Password);
+
+        ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
         ImGui::BeginTable("my_table", 8, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings);
 
@@ -455,7 +468,7 @@ namespace ResPacker {
 
         ImGui::OpenPopup("Edit Packed Path");
 
-        if (ImGui::BeginPopupModal("Edit Packed Path", &showEditPackedPathWindow, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal("Edit Packed Path", &showEditPackedPathWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
             ImGui::InputText("Packed Path", editPackedPath, IM_ARRAYSIZE(editPackedPath));
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
             if (ImGui::Button(ICON_FA_FLOPPY_DISK " Save Path")) {
@@ -527,6 +540,8 @@ namespace ResPacker {
         ImGui::Text("Password:");
         ImGui::SameLine();
         ImGui::InputText("##password", password, IM_ARRAYSIZE(password), ImGuiInputTextFlags_Password);
+
+        ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
         ImGui::BeginTable("packed_files", 8, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings);
 
@@ -601,7 +616,7 @@ namespace ResPacker {
 
         ImGui::OpenPopup("Include File Generator");
 
-        if (ImGui::BeginPopupModal("Include File Generator", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal("Include File Generator", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
             ImGui::Text("Header File");
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
@@ -619,7 +634,7 @@ namespace ResPacker {
             headerFile += "}";
 
             ImGui::InputTextMultiline("##header", const_cast<char *>(headerFile.c_str()), headerFile.size(),
-                                      ImVec2(450, ImGui::GetTextLineHeight() * 16), ImGuiInputTextFlags_ReadOnly);
+                                      ImVec2(450 * scale, ImGui::GetTextLineHeight() * 16), ImGuiInputTextFlags_ReadOnly);
             ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
             float button_width = ImGui::CalcTextSize(ICON_FA_FLOPPY_DISK " Save File").x + ImGui::GetStyle().ItemSpacing.x * 4.5f;
@@ -664,7 +679,7 @@ namespace ResPacker {
 
         ImGui::OpenPopup("Unpacking Complete");
 
-        if (ImGui::BeginPopupModal("Unpacking Complete", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal("Unpacking Complete", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
             std::chrono::duration<double> elapsed = packEnd - packStart;
             ImGui::Text("Unpacking has been completed");
             ImGui::Dummy(ImVec2(0.0f, 2.0f));

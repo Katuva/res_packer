@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.24)
 project(res_packer_gui VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+find_package(glfw3 CONFIG REQUIRED)
 find_package(lz4 CONFIG REQUIRED)
 find_package(zstd CONFIG REQUIRED)
 find_package(unofficial-sodium CONFIG REQUIRED)
@@ -45,7 +47,7 @@ add_executable(
     PackerConfig.h
 )
 
-target_link_libraries(res_packer_gui PRIVATE imgui imgui-win32 imgui-dx11 lz4::lz4 $<IF:$<TARGET_EXISTS:zstd::libzstd_shared>,zstd::libzstd_shared,zstd::libzstd_static> unofficial-sodium::sodium cereal::cereal)
+target_link_libraries(res_packer_gui PRIVATE imgui imgui-glfw imgui-opengl3 glfw lz4::lz4 $<IF:$<TARGET_EXISTS:zstd::libzstd_shared>,zstd::libzstd_shared,zstd::libzstd_static> unofficial-sodium::sodium cereal::cereal)
 
 set(RC_FILE "${CMAKE_CURRENT_SOURCE_DIR}/resources.rc")  # Replace 'resources.rc' with the actual name of your RC file
 
