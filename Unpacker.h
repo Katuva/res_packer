@@ -35,6 +35,7 @@ public:
 
     static PakTypes::PakFile ParsePakFile(const std::string &inputPath);
 
+#ifdef USE_ENCRYPTION
     void Decrypt(std::vector<char> &dataBuffer) const;
 
     [[nodiscard]] size_t getEncryptionOpsLimit() const { return encryptionOpsLimit; }
@@ -48,8 +49,10 @@ public:
     [[nodiscard]] std::string getPassword() const { return password; }
 
     void setPassword(std::string &pwd) { password = pwd; }
+#endif
 
 private:
+#ifdef USE_ENCRYPTION
     size_t encryptionOpsLimit = crypto_pwhash_OPSLIMIT_MIN;
     size_t encryptionMemLimit = crypto_pwhash_MEMLIMIT_MIN;
 
@@ -58,4 +61,5 @@ private:
     unsigned char key[crypto_secretbox_xchacha20poly1305_KEYBYTES];
 
     void GenerateEncryptionKey();
+#endif
 };
